@@ -350,6 +350,8 @@ body{touch-action:manipulation;-webkit-tap-highlight-color:transparent;overscrol
 .vrow{display:grid;grid-template-columns:92px 1fr 26px;gap:10px;align-items:center;margin:8px 0;font-size:13px}.vbar{height:8px;border-radius:5px;background:var(--surface2);overflow:hidden}.vbar i{display:block;height:100%;border-radius:5px}.vrow b{text-align:right;font-variant-numeric:tabular-nums}
 .ptips{padding:6px 14px}.ptip{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px;align-items:flex-start}.ptip:first-child{border-top:0}.ptip i{flex:none;width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--yellow,#f59e0b)}.ptip.ok i{background:var(--good,#22c55e)}.ptip.bad i{background:var(--red,#ef4444)}
 .pecta{padding:16px}
+.cmpt{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}.cmpt th{font-weight:600;color:var(--muted);text-align:right;padding:4px 0;font-size:12px}.cmpt th:first-child,.cmpt td:first-child{text-align:left}.cmpt td{padding:7px 0;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}.cmpt td:first-child{color:var(--muted)}
+nav button{font-size:7.5px}nav button svg{width:21px;height:21px}
 </style>
 <div class="aurora"><i></i><i></i><i></i></div>
 <div class="wrap">
@@ -471,8 +473,8 @@ async function pushDb(){
 function setSync(on){const el=$('#sync');el.className='sync'+(on?'':' off');el.lastChild.textContent=on?'Sauvegardé':'Local seul'}
 async function initDb(){
   try{
-    if(!window.claude){if(!sbOn())return;sbLoadS();let skip=false;try{skip=localStorage.getItem('it.nolog')==='1'}catch(e){}
-      if(!sbs){if(!skip){authNeed=true;showAuth()}return}
+    if(!window.claude){if(!sbOn())return;sbLoadS();try{localStorage.removeItem('it.nolog')}catch(e){}
+      if(!sbs){authNeed=true;showAuth();return}
       dbRoot=sbCol('user_docs');dbBoard=sbCol('board');myUid=sbs.user.id;await syncDb();return}
     claude.use('sample').then(x=>{smp=x}).catch(()=>{});
     const [d,u]=await Promise.all([claude.use('db'),claude.use('user')]);
@@ -2849,19 +2851,20 @@ const backRow=t=>`<div class="pback"><button data-a="psub" data-v="home" aria-la
 const AIC=k=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${AI[k]}"/></svg>`;
 /* ===== Amis & classement ===== */
 const REGIONS=['Auvergne-Rhône-Alpes','Bourgogne-Franche-Comté','Bretagne','Centre-Val de Loire','Corse','Grand Est','Hauts-de-France','Île-de-France','Normandie','Nouvelle-Aquitaine','Occitanie','Pays de la Loire',"Provence-Alpes-Côte d'Azur",'Outre-mer','Hors de France'];
-let dbBoard=null,myUid='',profSoc=false,socView='friends',socRows=null,socBusy=false,socMsg='',socCmp=null;
+let socQ='',dbBoard=null,myUid='',profSoc=false,socView='friends',socRows=null,socBusy=false,socMsg='',socCmp=null;
 const realLv=c=>c.th.filter(t=>c.v()>=t).length;
 const rankIdx=pts=>{const tot=TROPH.length*9,fi=[.92,.8,.68,.56,.45,.34,.24,.12].findIndex(f=>pts>=tot*f);return pts<=0?0:fi<0?1:9-fi};
 function myCard(){const lv={};TROPH.forEach(c=>{try{lv[c.id]=realLv(c)}catch(e){lv[c.id]=0}});const pts=Object.values(lv).reduce((a,b)=>a+b,0),t=S.sessions.reduce((a,x)=>a+x.sets.reduce((b,y)=>b+y.kg*y.reps,0),0)/1000;
-  return {n:S.soc.name,r:S.soc.region,pts,lv,ses:S.sessions.length,t:Math.round(t*10)/10,u:Date.now()}}
+  const d30=Date.now()-30*864e5,rec=S.sessions.filter(x=>x.date>=d30),t30=rec.reduce((a,x)=>a+x.sets.reduce((b,y)=>b+y.kg*y.reps,0),0)/1000,best=re=>{let m=0;S.sessions.forEach(x=>x.sets.forEach(y=>{if(re.test(y.ex||'')&&y.kg>0&&y.reps>0)m=Math.max(m,y.kg*(1+Math.min(y.reps,12)/30))}));return Math.round(m)},str=(()=>{try{return streak()}catch(e){return 0}})();
+  return {n:S.soc.name,r:S.soc.region,pts,lv,ses:S.sessions.length,t:Math.round(t*10)/10,s30:rec.length,t30:Math.round(t30*10)/10,str,l:{sq:best(/squat(?!.*(gobelet|bulgare|hack))/i),bp:best(/développé couché(?!.*(haltères|machine))/i),dl:best(/soulevé de terre(?!.*roumain)/i)},u:Date.now()}}
 function cleanCard(id,o){o=o&&typeof o==='object'?o:{};const lv={};TROPH.forEach(c=>{const v=Math.round(+(o.lv||{})[c.id]);lv[c.id]=v>=0&&v<=9?v:0});const pts=Object.values(lv).reduce((a,b)=>a+b,0);
-  return {id,n:String(o.n||'Anonyme').slice(0,20),r:REGIONS.includes(o.r)?o.r:'',pts,lv,ses:Math.max(0,Math.round(+o.ses||0)),t:Math.max(0,+o.t||0)}}
+  return {id,n:String(o.n||'Anonyme').slice(0,20),r:REGIONS.includes(o.r)?o.r:'',pts,lv,ses:Math.max(0,Math.round(+o.ses||0)),t:Math.max(0,+o.t||0),s30:Math.max(0,Math.round(+o.s30||0)),t30:Math.max(0,+o.t30||0),str:Math.max(0,Math.round(+o.str||0)),l:{sq:Math.max(0,Math.round(+(o.l||{}).sq||0)),bp:Math.max(0,Math.round(+(o.l||{}).bp||0)),dl:Math.max(0,Math.round(+(o.l||{}).dl||0))}}}
 const tmo=(p,ms)=>Promise.race([p,new Promise((_,j)=>setTimeout(()=>j(new Error('timeout')),ms))]);
 async function socLoad(){socBusy=true;socMsg='';if(profSoc&&profSub==='home')render();
   try{if(!dbBoard)throw new Error('nodb');
     if(S.soc.on&&myUid){try{await tmo(dbBoard.doc(myUid).set(myCard()),10000)}catch(e){socMsg="Publication impossible : ton accès est peut-être en lecture seule."}}
     const snap=await tmo(dbBoard.get(),10000);socRows=snap.docs.map(x=>cleanCard(x.id,x.data()))}
-  catch(e){socMsg=e&&e.message==='nodb'?"Classement indisponible ici : ouvre l'appli depuis ton compte connecté.":"Impossible de charger le classement. Vérifie ta connexion et réessaie."}
+  catch(e){socMsg=e&&e.message==='nodb'?"Classement indisponible : connecte-toi à ton compte.":"Impossible de charger le classement ("+String((e&&e.message)||'erreur').slice(0,90)+"). Vérifie ta connexion, et que le fichier SQL a bien été exécuté dans Supabase."}
   socBusy=false;if(profSoc&&profSub==='home')render()}
 function vFriends(){
   const s=S.soc;
@@ -2869,18 +2872,18 @@ function vFriends(){
    <p class="muted" style="margin:0 0 12px">Rejoins le classement pour voir qui a quel niveau, quels badges, et te situer dans ta région.</p>
    <label class="label" for="soc_n">Pseudo public</label><input id="soc_n" maxlength="20" placeholder="Ex. Léo_Squat" value="${esc(s.name||'')}" style="margin:6px 0 12px">
    <label class="label" for="soc_r">Région</label><select id="soc_r" style="margin:6px 0 12px;width:100%"><option value="">Choisir…</option>${REGIONS.map(r=>`<option${s.region===r?' selected':''}>${esc(r)}</option>`).join('')}</select>
-   <p class="muted" style="font-size:12px;margin:0 0 12px">Partagé : pseudo, région, niveau global, niveau de chaque badge, nombre de séances et tonnage. Jamais : poids, nutrition, photos ni notes. Tu peux quitter le classement à tout moment, tes données publiques sont alors supprimées.</p>
+   <p class="muted" style="font-size:12px;margin:0 0 12px">Partagé : pseudo, région, niveau global, niveau de chaque badge, séances, tonnage, série en cours et meilleurs squat, développé couché et soulevé de terre. Jamais : poids, nutrition, photos ni notes. Tu peux quitter le classement à tout moment, tes données publiques sont alors supprimées.</p>
    <button class="btn block" data-a="socjoin">Rejoindre le classement</button><p id="socmsg" class="muted" style="margin:10px 0 0;font-size:13px" aria-live="polite">${esc(socMsg)}</p></div>`;
   const me=myCard(),rows=(socRows||[]).filter(r=>r.id!==myUid&&!(s.blocked||[]).includes(r.id));
   const all=[{...cleanCard(myUid,me),me:1},...rows].sort((a,b)=>b.pts-a.pts||b.t-a.t||a.n.localeCompare(b.n));
   const pool=socView==='friends'?all.filter(r=>r.me||s.friends.includes(r.id)):socView==='region'?all.filter(r=>r.me||(s.region&&r.r===s.region)):all;
   const pos=pool.findIndex(r=>r.me)+1,rk=rankIdx(me.pts);
-  const rowH=(r,i)=>{const k=rankIdx(r.pts),col=k?TIERS[k-1][1]:'var(--muted)';return `<button class="srow${r.me?' me':''}" data-a="soccmp" data-i="${esc(r.id)}"><span class="srk">${i+1}</span><span class="sdot" style="background:${col}"></span><span class="snm"><b>${esc(r.n)}${r.me?' (toi)':''}</b><small>${k?TITLES[k-1]:'Novice'}${r.r?' · '+esc(r.r):''}</small></span><span class="spt"><b>${r.pts}</b><small>pts</small></span></button>`};
+  const rowH=(r,i)=>{const k=rankIdx(r.pts),col=k?TIERS[k-1][1]:'var(--muted)';return `<button class="srow${r.me?' me':''}" data-a="soccmp" data-i="${esc(r.id)}"><span class="srk">${i+1}</span><span class="sdot" style="background:${col}"></span><span class="snm"><b>${esc(r.n)}${r.me?' (toi)':''}</b><small>${k?TITLES[k-1]:'Novice'}${r.r?' · '+esc(r.r):''}</small><small>${r.s30} séance${r.s30>1?'s':''} sur 30 j${r.str?' · série '+r.str+' j':''}</small></span><span class="spt"><b>${r.pts}</b><small>pts</small></span></button>`};
   const cmp=socCmp&&all.find(r=>r.id===socCmp&&!r.me),m0=all.find(r=>r.me);
   const cmpH=cmp?`<div class="card soc"><div class="row" style="align-items:center"><h3 style="margin:0;font-size:19px">Toi vs ${esc(cmp.n)}</h3><button class="lnk" data-a="soccmp" data-i="">Fermer</button></div>
-   <div class="cmpk"><span><b>${m0.pts}</b> pts</span><span><b>${cmp.pts}</b> pts</span></div>
+   <table class="cmpt"><thead><tr><th></th><th>Toi</th><th>${esc(cmp.n)}</th></tr></thead><tbody>${[['Points',m0.pts,cmp.pts],['Séances (30 j)',m0.s30,cmp.s30],['Tonnage (30 j)',frN(m0.t30,1)+' t',frN(cmp.t30,1)+' t'],['Série en cours',m0.str+' j',cmp.str+' j'],['Séances au total',m0.ses,cmp.ses],['Squat (1RM est.)',m0.l.sq?m0.l.sq+' kg':'—',cmp.l.sq?cmp.l.sq+' kg':'—'],['Développé couché',m0.l.bp?m0.l.bp+' kg':'—',cmp.l.bp?cmp.l.bp+' kg':'—'],['Soulevé de terre',m0.l.dl?m0.l.dl+' kg':'—',cmp.l.dl?cmp.l.dl+' kg':'—']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table>
    ${TROPH.map(c=>{const a=m0.lv[c.id],b=cmp.lv[c.id];return `<div class="cmpr"><span class="cmpn">${esc(c.n)}</span><div class="cmpb"><i style="width:${a/9*100}%;background:var(--accent)"></i></div><b>${a}</b><div class="cmpb"><i style="width:${b/9*100}%;background:var(--fg);opacity:.55"></i></div><b>${b}</b></div>`}).join('')}
-   <p class="muted" style="margin:10px 0 0;font-size:12.5px">${cmp.ses} séance${cmp.ses>1?'s':''} · ${frN(cmp.t,1)} t soulevées chez ${esc(cmp.n)}, contre ${m0.ses} et ${frN(m0.t,1)} t chez toi. Niveaux de 0 à 9 (Fer à Diamant).</p><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${sbs?`<button class="btn small ghost" data-a="socrep" data-i="${esc(cmp.id)}">Signaler</button>`:''}<button class="btn small ghost" data-a="socblk" data-i="${esc(cmp.id)}">Bloquer</button></div>${s.friends.includes(cmp.id)?`<button class="btn small" data-a="socrm" data-i="${esc(cmp.id)}" style="margin-top:8px">Retirer des amis</button>`:`<button class="btn small" data-a="socfadd" data-i="${esc(cmp.id)}" style="margin-top:8px">Ajouter aux amis</button>`}</div>`:'';
+   <p class="muted" style="margin:10px 0 0;font-size:12.5px">Niveaux des badges de 0 à 9 (Fer à Diamant). Les 1RM sont des estimations d'après les séries enregistrées.</p><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${sbs?`<button class="btn small ghost" data-a="socrep" data-i="${esc(cmp.id)}">Signaler</button>`:''}<button class="btn small ghost" data-a="socblk" data-i="${esc(cmp.id)}">Bloquer</button></div>${s.friends.includes(cmp.id)?`<button class="btn small" data-a="socrm" data-i="${esc(cmp.id)}" style="margin-top:8px">Retirer des amis</button>`:`<button class="btn small" data-a="socfadd" data-i="${esc(cmp.id)}" style="margin-top:8px">Ajouter aux amis</button>`}</div>`:'';
   const missing=socView==='friends'?s.friends.filter(id=>!all.some(r=>r.id===id)):[];
   return `<div class="card soc"><div class="row" style="align-items:center"><div><div class="label">Ton rang ${socView==='friends'?'parmi tes amis':socView==='region'?'en '+esc(s.region||'région'):'général'}</div><div class="big">${pos?'#'+pos:'—'}<small style="color:var(--muted);font-size:15px"> sur ${pool.length}</small></div></div><div style="text-align:right"><div class="label">Niveau</div><b style="font-size:18px">${rk?TITLES[rk-1]:'Novice'}</b></div></div></div>
   <div class="seg" style="margin:12px 0">${[['friends','Amis'],['region','Région'],['all','Général']].map(([v,l])=>`<button data-a="socview" data-v="${v}" aria-pressed="${socView===v}">${l}</button>`).join('')}</div>
@@ -2891,9 +2894,11 @@ function vFriends(){
   ${missing.map(id=>`<div class="hrow"><span class="muted">Ami pas encore dans le classement</span><button class="lnk" data-a="socrm" data-i="${esc(id)}">Retirer</button></div>`).join('')}
   ${cmpH}
   <div class="sh"><h3>Ajouter un ami</h3></div><div class="card soc"><div class="label">Ton code ami</div><div class="row" style="gap:8px;margin:6px 0 12px;align-items:center"><code class="scode">${esc(myUid||'indisponible')}</code><button class="btn small" data-a="soccopy">Copier</button></div>
-   <div class="row" style="gap:8px"><input id="socadd" placeholder="Code de ton ami" autocapitalize="off" autocomplete="off"><button class="btn small" data-a="socadd">Ajouter</button></div></div>
+   <div class="row" style="gap:8px"><input id="socadd" placeholder="Code de ton ami" autocapitalize="off" autocomplete="off"><button class="btn small" data-a="socadd">Ajouter</button></div>
+   <div class="label" style="margin:16px 0 6px">Ou cherche un pseudo</div><div class="row" style="gap:8px"><input id="socq" placeholder="Pseudo" value="${esc(socQ)}" autocapitalize="off" autocomplete="off"><button class="btn small" data-a="socsearch">Chercher</button></div>
+   ${socQ?`<div class="sl" style="margin-top:10px">${(socRows||[]).filter(r=>r.id!==myUid&&!s.friends.includes(r.id)&&!(s.blocked||[]).includes(r.id)&&nrm(r.n).includes(nrm(socQ))).slice(0,8).map(r=>`<div class="srow"><span class="snm"><b>${esc(r.n)}</b><small>${r.r?esc(r.r)+' · ':''}${r.pts} pts</small></span><button class="btn small" data-a="socfadd" data-i="${esc(r.id)}">Ajouter</button></div>`).join('')||`<p class="muted" style="font-size:13px">${(socRows||[]).some(r=>s.friends.includes(r.id)&&nrm(r.n).includes(nrm(socQ)))?'Déjà dans tes amis.':'Aucun pseudo trouvé. Ton ami doit avoir rejoint le classement.'}</p>`}</div>`:''}</div>
   <div class="row" style="gap:8px;margin-top:12px"><button class="btn small" data-a="socref">Actualiser</button><button class="btn small" data-a="socleave" style="margin-left:auto">Quitter le classement</button></div>
-  <p class="muted" style="font-size:12px;margin-top:10px">Seules les personnes ayant accès à cette appli apparaissent. Les niveaux affichés sont réels, sans le mode démo.</p>`}
+  <p class="muted" style="font-size:12px;margin-top:10px">Seules les personnes ayant accès à cette appli apparaissent. Les niveaux affichés sont réels.</p>`}
 function vPHome(u){const p=S.nut.p,tg=p?targets(dkey(Date.now())):null,t=p?totals(dkey(Date.now())):null,wk=(()=>{const d=new Date(),m=dkey(d.getTime()-((d.getDay()+6)%7)*864e5);return S.sessions.filter(s=>dkey(s.date)>=m).length})(),st=streak();
   const tiles=[['energy','Énergie alimentaire',()=>{const d=anDef('energy'),vs=anBuckets(d,'day').map(x=>x.v),a=vs.filter(x=>x!=null);return {big:a.length?frN(a.reduce((x,y)=>x+y,0)/a.length)+' kcal':'—',sub:'moyenne sur 30 j',sp:spark(vs.slice(-14),d.c),c:d.c}}],
    ['macros','Apport nutritionnel',()=>{const a=Object.keys(S.nut.log).filter(nutHas).slice(-30).map(totals);const m=k=>a.length?Math.round(a.reduce((x,y)=>x+y[k],0)/a.length):0;return {big:a.length?`P ${m('p')} · G ${m('c')} · L ${m('f')}`:'—',sub:'moyenne en g par jour',sp:'',c:'var(--cyan)'}}],
@@ -3394,7 +3399,7 @@ function tcardH(c){const v=c.v(),l=lvlOf(c),nx=c.th[l],pr=nx?Math.min(100,v/nx*1
   return `<div class="tcard${l?'':' lock'}" data-a="tdetail" data-tid="${c.id}" style="--cc:${tcol(c)}" role="button" tabindex="0">${badge(c,l||1,112,!l,true)}<b>${c.n}</b><span class="muted">${l?TITLES[l-1]:'Verrouillé'}</span><div class="pips">${TIERS.map((t,i)=>`<i style="${i<l?'background:'+t[1]+';box-shadow:0 0 5px '+t[1]:''}"></i>`).join('')}</div>
     <div class="pbar" style="width:100%"><i style="width:${pr}%"></i></div><span class="muted" style="font-size:11px">${nx?fmtv(v)+' / '+nx+' '+c.d:'Palier maximum atteint'}</span></div>`}
 
-const LBL={boutique:'Boutique',seance:'Séance',historique:'Historique',stats:'Suivi',nutrition:'Nutrition',trophees:'Trophées',programmes:'Programmes'};
+const LBL={boutique:'Boutique',seance:'Séance',historique:'Historique',stats:'Suivi',nutrition:'Nutrition',trophees:'Trophées',programmes:'Programmes',profil:'Profil'};
 const RW=[10,15,25,40,60,90,130,190,300],ULT_BONUS=600,PRICE={neon:0,epure:0,obsidian:0,ange:2600,papillon:2600,gold:1200,rose:1200,abysses:1800,cosmos:2200,shogun:2600,pharaon:3000},FREE=['neon','epure','obsidian'];
 let shopConf='';
 const PREMIUM_DEV=true;
@@ -3424,8 +3429,8 @@ function vBoutique(){const c=coins(),order=['epure','neon','obsidian','gold','ro
    <p class="muted" style="margin:0 0 10px;font-size:12px">${PREMIUM_DEV?'Période de lancement : tout est ouvert pour le moment. ':''}Tarifs prévus, non définitifs. Aucun paiement n'est possible dans l'app pour l'instant.</p>
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small${S.premInt?'':' ghost'}" data-a="premint">${S.premInt?'✓ Je serai prévenu':'Me prévenir à la sortie'}</button><button class="btn small ghost" data-a="testfree">${S.testFree?'Quitter la version gratuite':'Voir la version gratuite'}</button></div></div>`}
 function vPaywall(){return `<div class="hero" style="text-align:center;margin-bottom:14px"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--neon)" stroke-width="1.600" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg><h2 style="margin:8px 0 4px;font-size:28px">Nutrition · Premium</h2><p class="muted" style="margin:0 0 14px;font-size:14px">Le suivi nutritionnel fait partie d'IronTrack Premium, avec toutes les cosmétiques.</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" data-a="tab" data-t="boutique">Découvrir Premium</button><button class="btn ghost" data-a="premint">${S.premInt?'✓ Je serai prévenu':'Me prévenir'}</button></div></div>`}
-const NAVC={seance:'var(--neon)',historique:'#a07be0',stats:'var(--red)',nutrition:'#d9803c',trophees:'var(--yellow)',programmes:'var(--rose)',boutique:'var(--neon)'};
-const ICON={seance:'<path d="M3 9v6M6 6v12M18 6v12M21 9v6M6 12h12"/>',stats:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',nutrition:'<path d="M12 8c-2-2-6-1-6 4 0 4 3 8 6 8s6-4 6-8c0-5-4-6-6-4zM12 8c0-2 1-3 3-4"/>',trophees:'<path d="M8 4h8v5a4 4 0 01-8 0zM8 6H5v1a3 3 0 003 3M16 6h3v1a3 3 0 01-3 3M12 13v4M9 20h6"/>',boutique:'<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 016 0v2"/>'};
+const NAVC={seance:'var(--neon)',historique:'#a07be0',stats:'var(--red)',nutrition:'#d9803c',trophees:'var(--yellow)',programmes:'var(--rose)',boutique:'var(--neon)',profil:'var(--cyan,var(--neon))'};
+const ICON={seance:'<path d="M3 9v6M6 6v12M18 6v12M21 9v6M6 12h12"/>',stats:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',nutrition:'<path d="M12 8c-2-2-6-1-6 4 0 4 3 8 6 8s6-4 6-8c0-5-4-6-6-4zM12 8c0-2 1-3 3-4"/>',trophees:'<path d="M8 4h8v5a4 4 0 01-8 0zM8 6H5v1a3 3 0 003 3M16 6h3v1a3 3 0 01-3 3M12 13v4M9 20h6"/>',boutique:'<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 016 0v2"/>',profil:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/>'};
 function render(){
   
   applyLook();document.documentElement.style.setProperty('--tc',NAVC[tab]||'var(--neon)');
@@ -3478,7 +3483,7 @@ document.addEventListener('pointerup',dkEnd);document.addEventListener('pointerc
 document.addEventListener('click',e=>{if(swiped){e.stopPropagation();e.preventDefault();swiped=false}},true);
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-a]');if(!b)return;if(lpFired){lpFired=false;return}const a=b.dataset.a,D=b.dataset,A=S.active;
-  if(a==='tab'){if(D.t!=='boutique'&&lookPrev){lookPrev='';applyLook()}tab=D.t;shopConf='';render();scrollTo(0,0)}
+  if(a==='tab'){if(D.t!=='boutique'&&lookPrev){lookPrev='';applyLook()}if(D.t==='profil'&&tab==='profil'){profSub='home';profSoc=false}tab=D.t;shopConf='';render();scrollTo(0,0)}
   else if(a==='start')startSession(D.p,D.d);
   else if(a==='free'){S.active={id:uid(),date:Date.now(),prog:'Libre',day:'Séance libre',ex:[]};save();render()}
   else if(a==='cancel'){S.active=null;stopRest();save();render()}
@@ -3565,9 +3570,10 @@ document.addEventListener('click',async e=>{
     if(n.length<2){socMsg='Choisis un pseudo de 2 à 20 caractères.';const m=$('#socmsg');if(m)m.textContent=socMsg;return}
     S.soc={on:true,name:n.slice(0,20),region:REGIONS.includes(r)?r:'',friends:S.soc.friends||[]};save();socRows=null;socLoad()}
   else if(a==='socleave'){S.soc.on=false;save();try{if(dbBoard&&myUid)await tmo(dbBoard.doc(myUid).delete(),8000)}catch(x){}socRows=null;socMsg='';render()}
+  else if(a==='socsearch'){socQ=(($('#socq')||{}).value||'').trim();if(!socRows&&!socBusy)await socLoad();else render()}
   else if(a==='socadd'||a==='socfadd'){const id=a==='socfadd'?D.i:(($('#socadd')||{}).value||'').trim();
     if(!id||id===myUid){socMsg=id===myUid?'C\'est ton propre code.':'Colle le code de ton ami.';render();return}
-    if(!S.soc.friends.includes(id)){S.soc.friends.push(id);save()}socMsg='';socView='friends';if(!socRows||!socRows.some(r=>r.id===id))socLoad();else render()}
+    if(!S.soc.friends.includes(id)){S.soc.friends.push(id);save()}socMsg='';socView='friends';if(!socRows||!socRows.some(r=>r.id===id))await socLoad();const f=(socRows||[]).find(r=>r.id===id);if(!f&&a==='socadd'&&!socMsg){S.soc.friends=S.soc.friends.filter(x=>x!==id);save();socMsg='Aucun compte trouvé avec ce code. Vérifie le code, et que ton ami a bien rejoint le classement.'}else if(f&&a==='socadd')socMsg='Ami ajouté : '+f.n;render()}
   else if(a==='socrm'){S.soc.friends=S.soc.friends.filter(x=>x!==D.i);socCmp=null;save();render()}
   else if(a==='soccopy'){try{await navigator.clipboard.writeText(myUid);socMsg='Code copié.'}catch(x){socMsg='Copie impossible : sélectionne le code et copie-le à la main.'}render()}
   else if(a==='pgoals'){tab='nutrition';nutTab='profil';pdraft=null;profSub='home';render();scrollTo(0,0)}
@@ -3623,7 +3629,7 @@ function showAuth(){const old=$('#auth');if(old)old.remove();if(!authNeed){docum
    <label class="label" for="au_e">E-mail</label><input id="au_e" type="email" autocomplete="email" inputmode="email" autocapitalize="off" value="${esc(authE)}" style="margin:6px 0 12px">
    <label class="label" for="au_p">Mot de passe${up?' (8 caractères minimum)':''}</label><input id="au_p" type="password" autocomplete="${up?'new-password':'current-password'}" style="margin:6px 0 4px">
    <p id="aumsg" class="obm" aria-live="polite">${esc(authMsg)}</p><div class="obb"><button class="btn" data-a="auok" style="flex:1">${up?'Créer mon compte':'Se connecter'}</button></div>
-   <button class="lnk obskip" data-a="aumode">${up?'J\'ai déjà un compte':'Créer un compte'}</button>${up?'':'<button class="lnk obskip" data-a="aureset">Mot de passe oublié</button>'}<button class="lnk obskip" data-a="auskip">Continuer sans compte</button></div>`;
+   <button class="lnk obskip" data-a="aumode">${up?'J\'ai déjà un compte':'Créer un compte'}</button>${up?'':'<button class="lnk obskip" data-a="aureset">Mot de passe oublié</button>'}</div>`;
   document.body.appendChild(el);document.documentElement.style.overflow='hidden'}
 async function authGo(){const e=($('#au_e')||{}).value.trim(),p=($('#au_p')||{}).value;authMsg='';authE=e;
   if(!/^\S+@\S+\.\S+$/.test(e)){authMsg='Adresse e-mail invalide.'}else if(p.length<8){authMsg='Mot de passe : 8 caractères minimum.'}
@@ -3632,7 +3638,7 @@ async function authGo(){const e=($('#au_e')||{}).value.trim(),p=($('#au_p')||{})
   try{let j;if(authMode==='up'){j=await sbRaw('/auth/v1/signup',{method:'POST',body:JSON.stringify({email:e,password:p})});
       if(!j||!j.access_token){authMsg='Compte créé. Confirme ton adresse via l\'e-mail reçu, puis connecte-toi.';authMode='in';showAuth();return}}
     else j=await sbRaw('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:e,password:p})});
-    sbs=sbSess(j);sbSaveS();authNeed=false;authMsg='';showAuth();obWait=true;await initDb();obWait=false;render()}
+    sbs=sbSess(j);sbSaveS();try{const last=localStorage.getItem('it.uid');localStorage.setItem('it.uid',sbs.user.id);if(last&&last!==sbs.user.id){localStorage.removeItem(KEY);location.reload();return}}catch(e){}authNeed=false;authMsg='';showAuth();obWait=true;await initDb();obWait=false;render()}
   catch(x){authMsg=/Invalid login/i.test(x.message)?'E-mail ou mot de passe incorrect.':/already|registered/i.test(x.message)?'Cette adresse a déjà un compte : connecte-toi.':/timeout|fetch|network/i.test(x.message)?'Connexion impossible. Vérifie ton réseau.':x.message;showAuth()}}
 async function sbSignOut(){try{if(sbs)await sbRaw('/auth/v1/logout',{method:'POST'},sbs.access_token)}catch(e){}sbs=null;sbSaveS();dbRoot=null;dbBoard=null;myUid='';try{localStorage.removeItem(KEY)}catch(e){}location.reload()}
 async function sbDelete(){try{await sbApi('/rest/v1/rpc/delete_my_account',{method:'POST',body:'{}'})}catch(e){return false}await sbSignOut();return true}
