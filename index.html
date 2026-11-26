@@ -446,7 +446,7 @@ function migrate(){
   if((S.v||0)<3){S.programs=(S.programs||[]).filter(p=>p.id!=='ul'&&p.id!=='it1');S.programs.unshift(IT_PROG);
     const M={'Lundi · Upper':'Mardi · Upper','Mardi · Lower':'Mercredi · Lower','Mercredi · Upper Force':'Jeudi · Upper Force','Jeudi · Lower Force':'Vendredi · Lower Force'};
     (S.sessions||[]).forEach(x=>{if(M[x.day])x.day=M[x.day]});if(S.active&&M[S.active.day])S.active.day=M[S.active.day];S.v=3}
-  ensureNut();if(!S.seen)S.seen=tiersNow();if(!Array.isArray(S.own))S.own=[];if(!S.spent)S.spent=0;if(!owns(S.look||'epure'))S.look='epure'}
+  ensureNut();if(!S.tr0){S.tr0=1;S.seen=tiersNow();S.ultSeen=0;S.own=[];S.spent=0}if(!S.seen)S.seen=tiersNow();if(!Array.isArray(S.own))S.own=[];if(!S.spent)S.spent=0;if(!owns(S.look||'epure'))S.look='epure'}
 let lookPrev='';const LK=()=>lookPrev||S.look||'epure';
 let S={programs:[],sessions:[],active:null,rest:90,restBy:{},updated:0};
 const COMP=/squat|soulev|développé|developpe|presse|rowing|traction|hip thrust|dips|militaire|fentes/i;
@@ -3022,7 +3022,7 @@ function tDetail(id){const c=TROPH.find(x=>x.id===id);if(!c)return;const m=TMETA
   const rows=TIERS.map((t,i)=>{const th=c.th[i],ok=demoAll||v>=th,nx=i===l;return `<div class="trow">${badge(c,i+1,56,!ok,true)}<div style="flex:1;min-width:0"><div class="row"><div><b>${TITLES[i]}</b> <span class="muted" style="font-size:12px">· ${t[0]}</span></div><span class="muted" style="flex:none">${th} ${c.d}</span></div>${ok?'<span style="color:var(--good);font-size:12px">✓ Débloqué</span>':nx?`<div class="pbar" style="margin:6px 0 2px"><i style="width:${Math.min(100,v/th*100)}%;background:${m.col}"></i></div><span class="muted" style="font-size:12px">${fmtv(v)} / ${th}</span>`:'<span class="muted" style="font-size:12px">Aperçu · verrouillé</span>'}</div></div>`}).join('');
   el.innerHTML=`<div class="sbk" data-a="celclose"></div><div class="sheetbox" style="--cc:${m.col}"><div class="row" style="align-items:flex-start"><div style="display:flex;gap:14px;align-items:center;min-width:0">${badge(c,l||1,76,!l)}<div style="min-width:0"><h2 style="font-size:28px;color:${m.col}">${c.n}</h2><div class="muted">${l?TITLES[l-1]+' · '+TIERS[l-1][0]:'Verrouillé'} · ${fmtv(v)} ${c.d}</div></div></div><button class="btn small ghost" data-a="celclose" aria-label="Fermer">✕</button></div><p class="muted" style="margin:12px 0">${m.desc}</p>${rows}${m.x?`<div class="label" style="margin:16px 0 6px">Suivi détaillé</div>${m.x()}`:''}</div>`;
   const old=$('#cel');if(old)old.remove();document.body.appendChild(el)}
-let demoAll=true;const DEV_ALL=true;
+let demoAll=false;const DEV_ALL=false;
 const lvlOf=c=>{if(demoAll)return 9;const v=c.v();return c.th.filter(t=>v>=t).length};
 function tiersNow(){const o={};TROPH.forEach(c=>o[c.id]=lvlOf(c));return o}
 const TIER2=['#6b7482','#8a531c','#9aa6b6','#b8860b','#8f0f2a','#1b3fa0','#0b7a4d','#6a2aa8','#6fd6ff'];
