@@ -352,6 +352,7 @@ body{touch-action:manipulation;-webkit-tap-highlight-color:transparent;overscrol
 .pecta{padding:16px}
 .cmpt{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}.cmpt th{font-weight:600;color:var(--muted);text-align:right;padding:4px 0;font-size:12px}.cmpt th:first-child,.cmpt td:first-child{text-align:left}.cmpt td{padding:7px 0;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}.cmpt td:first-child{color:var(--muted)}
 nav button{font-size:7.5px}nav button svg{width:21px;height:21px}
+.socdiag{white-space:pre-wrap;word-break:break-word;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;font:12px/1.5 ui-monospace,Menlo,monospace;margin:12px 0 0;user-select:text}
 </style>
 <div class="aurora"><i></i><i></i><i></i></div>
 <div class="wrap">
@@ -2851,7 +2852,7 @@ const backRow=t=>`<div class="pback"><button data-a="psub" data-v="home" aria-la
 const AIC=k=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${AI[k]}"/></svg>`;
 /* ===== Amis & classement ===== */
 const REGIONS=['Auvergne-Rhône-Alpes','Bourgogne-Franche-Comté','Bretagne','Centre-Val de Loire','Corse','Grand Est','Hauts-de-France','Île-de-France','Normandie','Nouvelle-Aquitaine','Occitanie','Pays de la Loire',"Provence-Alpes-Côte d'Azur",'Outre-mer','Hors de France'];
-let socQ='',dbBoard=null,myUid='',profSoc=false,socView='friends',socRows=null,socBusy=false,socMsg='',socCmp=null;
+const APPV='v63';let socDiag='',socQ='',dbBoard=null,myUid='',profSoc=false,socView='friends',socRows=null,socBusy=false,socMsg='',socCmp=null;
 const realLv=c=>c.th.filter(t=>c.v()>=t).length;
 const rankIdx=pts=>{const tot=TROPH.length*9,fi=[.92,.8,.68,.56,.45,.34,.24,.12].findIndex(f=>pts>=tot*f);return pts<=0?0:fi<0?1:9-fi};
 function myCard(){const lv={};TROPH.forEach(c=>{try{lv[c.id]=realLv(c)}catch(e){lv[c.id]=0}});const pts=Object.values(lv).reduce((a,b)=>a+b,0),t=S.sessions.reduce((a,x)=>a+x.sets.reduce((b,y)=>b+y.kg*y.reps,0),0)/1000;
@@ -2860,9 +2861,13 @@ function myCard(){const lv={};TROPH.forEach(c=>{try{lv[c.id]=realLv(c)}catch(e){
 function cleanCard(id,o){o=o&&typeof o==='object'?o:{};const lv={};TROPH.forEach(c=>{const v=Math.round(+(o.lv||{})[c.id]);lv[c.id]=v>=0&&v<=9?v:0});const pts=Object.values(lv).reduce((a,b)=>a+b,0);
   return {id,n:String(o.n||'Anonyme').slice(0,20),r:REGIONS.includes(o.r)?o.r:'',pts,lv,ses:Math.max(0,Math.round(+o.ses||0)),t:Math.max(0,+o.t||0),s30:Math.max(0,Math.round(+o.s30||0)),t30:Math.max(0,+o.t30||0),str:Math.max(0,Math.round(+o.str||0)),l:{sq:Math.max(0,Math.round(+(o.l||{}).sq||0)),bp:Math.max(0,Math.round(+(o.l||{}).bp||0)),dl:Math.max(0,Math.round(+(o.l||{}).dl||0))}}}
 const tmo=(p,ms)=>Promise.race([p,new Promise((_,j)=>setTimeout(()=>j(new Error('timeout')),ms))]);
+async function socDiagRun(){const L=['Version de l\'appli : '+APPV,'Compte : '+(sbs?sbs.user.email:'non connecté'),'Code ami : '+(myUid||'aucun'),'Classement activé : '+(S.soc.on?'oui':'non')];
+  try{if(!dbBoard)throw new Error('pas de connexion au serveur');const snap=await tmo(dbBoard.get(),10000),ids=snap.docs.map(d=>d.id);L.push('Lecture du classement : OK, '+ids.length+' joueur(s)');L.push('Ma fiche est dans le classement : '+(ids.includes(myUid)?'oui':'non'))}catch(e){L.push('Lecture du classement : ERREUR '+((e&&e.message)||'')+(e&&e.status?' (code '+e.status+')':''))}
+  if(S.soc.on&&dbBoard&&myUid){try{await tmo(dbBoard.doc(myUid).set(myCard()),10000);L.push('Publication de ma fiche : OK')}catch(e){L.push('Publication de ma fiche : ERREUR '+((e&&e.message)||'')+(e&&e.status?' (code '+e.status+')':''))}}
+  socDiag=L.join('\n');render()}
 async function socLoad(){socBusy=true;socMsg='';if(profSoc&&profSub==='home')render();
   try{if(!dbBoard)throw new Error('nodb');
-    if(S.soc.on&&myUid){try{await tmo(dbBoard.doc(myUid).set(myCard()),10000)}catch(e){socMsg="Publication impossible : ton accès est peut-être en lecture seule."}}
+    if(S.soc.on&&myUid){try{await tmo(dbBoard.doc(myUid).set(myCard()),10000)}catch(e){socMsg='Publication impossible : '+String((e&&e.message)||'erreur').slice(0,120)+(e&&e.status?' (code '+e.status+')':'')}}
     const snap=await tmo(dbBoard.get(),10000);socRows=snap.docs.map(x=>cleanCard(x.id,x.data()))}
   catch(e){socMsg=e&&e.message==='nodb'?"Classement indisponible : connecte-toi à ton compte.":"Impossible de charger le classement ("+String((e&&e.message)||'erreur').slice(0,90)+"). Vérifie ta connexion, et que le fichier SQL a bien été exécuté dans Supabase."}
   socBusy=false;if(profSoc&&profSub==='home')render()}
@@ -2897,8 +2902,8 @@ function vFriends(){
    <div class="row" style="gap:8px"><input id="socadd" placeholder="Code de ton ami" autocapitalize="off" autocomplete="off"><button class="btn small" data-a="socadd">Ajouter</button></div>
    <div class="label" style="margin:16px 0 6px">Ou cherche un pseudo</div><div class="row" style="gap:8px"><input id="socq" placeholder="Pseudo" value="${esc(socQ)}" autocapitalize="off" autocomplete="off"><button class="btn small" data-a="socsearch">Chercher</button></div>
    ${socQ?`<div class="sl" style="margin-top:10px">${(socRows||[]).filter(r=>r.id!==myUid&&!s.friends.includes(r.id)&&!(s.blocked||[]).includes(r.id)&&nrm(r.n).includes(nrm(socQ))).slice(0,8).map(r=>`<div class="srow"><span class="snm"><b>${esc(r.n)}</b><small>${r.r?esc(r.r)+' · ':''}${r.pts} pts</small></span><button class="btn small" data-a="socfadd" data-i="${esc(r.id)}">Ajouter</button></div>`).join('')||`<p class="muted" style="font-size:13px">${(socRows||[]).some(r=>s.friends.includes(r.id)&&nrm(r.n).includes(nrm(socQ)))?'Déjà dans tes amis.':'Aucun pseudo trouvé. Ton ami doit avoir rejoint le classement.'}</p>`}</div>`:''}</div>
-  <div class="row" style="gap:8px;margin-top:12px"><button class="btn small" data-a="socref">Actualiser</button><button class="btn small" data-a="socleave" style="margin-left:auto">Quitter le classement</button></div>
-  <p class="muted" style="font-size:12px;margin-top:10px">Seules les personnes ayant accès à cette appli apparaissent. Les niveaux affichés sont réels.</p>`}
+  <div class="row" style="gap:8px;margin-top:12px"><button class="btn small" data-a="socref">Actualiser</button><button class="btn small ghost" data-a="socdiag">Diagnostic</button><button class="btn small" data-a="socleave" style="margin-left:auto">Quitter le classement</button></div>
+  ${socDiag?`<pre class="socdiag">${esc(socDiag)}</pre>`:''}<p class="muted" style="font-size:12px;margin-top:10px">Seules les personnes ayant accès à cette appli apparaissent. Les niveaux affichés sont réels.</p>`}
 function vPHome(u){const p=S.nut.p,tg=p?targets(dkey(Date.now())):null,t=p?totals(dkey(Date.now())):null,wk=(()=>{const d=new Date(),m=dkey(d.getTime()-((d.getDay()+6)%7)*864e5);return S.sessions.filter(s=>dkey(s.date)>=m).length})(),st=streak();
   const tiles=[['energy','Énergie alimentaire',()=>{const d=anDef('energy'),vs=anBuckets(d,'day').map(x=>x.v),a=vs.filter(x=>x!=null);return {big:a.length?frN(a.reduce((x,y)=>x+y,0)/a.length)+' kcal':'—',sub:'moyenne sur 30 j',sp:spark(vs.slice(-14),d.c),c:d.c}}],
    ['macros','Apport nutritionnel',()=>{const a=Object.keys(S.nut.log).filter(nutHas).slice(-30).map(totals);const m=k=>a.length?Math.round(a.reduce((x,y)=>x+y[k],0)/a.length):0;return {big:a.length?`P ${m('p')} · G ${m('c')} · L ${m('f')}`:'—',sub:'moyenne en g par jour',sp:'',c:'var(--cyan)'}}],
@@ -3562,9 +3567,10 @@ document.addEventListener('click',async e=>{
   else if(a==='obnext'){obRead();const m=obCheck();ob.msg=m;if(m){showOb();return}if(ob.step>=OBN-1)obFinish();else{ob.step++;showOb();const e=$('#ob');if(e)e.scrollTop=0}}
   else if(a==='obback'){obRead();ob.msg='';ob.step=Math.max(0,ob.step-1);showOb()}
   else if(a==='obskip'){S.onb=1;save();showOb();render()}
-  else if(a==='psoc'){profSoc=D.v==='1';if(profSoc&&!socRows&&!socBusy)socLoad();else render();scrollTo(0,0)}
+  else if(a==='psoc'){profSoc=D.v==='1';if(profSoc&&!socBusy)socLoad();else render();scrollTo(0,0)}
   else if(a==='socview'){socView=D.v;socCmp=null;render()}
   else if(a==='socref'){socLoad()}
+  else if(a==='socdiag'){socDiag='Test en cours…';render();await socDiagRun()}
   else if(a==='soccmp'){socCmp=D.i||null;render()}
   else if(a==='socjoin'){const n=(($('#soc_n')||{}).value||'').trim().replace(/[<>]/g,''),r=(($('#soc_r')||{}).value||'');
     if(n.length<2){socMsg='Choisis un pseudo de 2 à 20 caractères.';const m=$('#socmsg');if(m)m.textContent=socMsg;return}
